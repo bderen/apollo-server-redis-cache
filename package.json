@@ -1,7 +1,7 @@
 {
   "name": "apollo-server-redis-cache",
-  "version": "0.0.1",
-  "description": "Apollo GraphQL redis cache middleware",
+  "version": "0.0.2",
+  "description": "Apollo GraphQL server redis cache middleware",
   "main": "dist/index.js",
   "author": {
     "name": "B. Deren",
@@ -12,6 +12,14 @@
     "type": "git",
     "url": "https://github.com/sgtram/apollo-server-redis-cache"
   },
+  "keywords": [
+    "GraphQL",
+    "Apollo",
+    "Server",
+    "Express",
+    "Redis",
+    "Cache"
+  ],
   "dependencies": {
     "apollo-server-core": "^1.2.0"
   }

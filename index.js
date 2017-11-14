@@ -10,7 +10,6 @@ export default class {
 
   middleware() {
     return (req, res, next) => {
-      
       if (!this.options.cache) {
         return next()
       }

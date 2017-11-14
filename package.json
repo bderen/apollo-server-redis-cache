@@ -1,8 +1,11 @@
 {
   "name": "apollo-server-redis-cache",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Apollo GraphQL server redis cache middleware",
-  "main": "index.js",
+  "main": "lib/library.min.js",
+  "scripts": {
+    "build": "webpack --env build"
+  },
   "author": {
     "name": "B. Deren",
     "email": "deren.bogdan@gmail.com"
@@ -26,6 +29,12 @@
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
-    "babel-preset-env": "^1.6.1"
+    "babel-eslint": "^8.0.2",
+    "babel-loader": "^7.1.2",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.11.0",
+    "eslint-loader": "^1.9.0",
+    "webpack": "^3.8.1",
+    "webpack-node-externals": "^1.6.0"
   }
 }

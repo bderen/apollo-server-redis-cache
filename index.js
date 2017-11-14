@@ -24,12 +24,15 @@ export default class {
       const _write = res.write.bind(res);
 
       const queryOperationName = req.body && req.body.operationName ? ':' + req.body.operationName : ''
-      const queryVariables = req.body && req.body.variables ? ':' + _hashSum(req.body.variables) : ''
+      const queryHash = req.body && req.body ? ':' + _hashSum(req.body) : ''
       const packageVersion = ':' + _package.version
-      const cacheKey = this.options.key + packageVersion + queryOperationName + queryVariables
+      const cacheKey = this.options.key + packageVersion + queryOperationName + queryHash
       
       this.client.get(cacheKey, (err, result) => {
         if ( result && result.length ) {
+          if (this.options.httpHeader) {
+            res.setHeader(`${this.options.httpHeader}`, 'HIT')
+          }
           if(binary) { //Convert back to binary buffer
             _write(new Buffer(result, 'base64'));
             res.end();
@@ -38,6 +41,9 @@ export default class {
             res.end();
           }
         } else {
+          if (this.options.httpHeader) {
+            res.setHeader(`${this.options.httpHeader}`, 'MISS')
+          }
           return next()
         }
       });

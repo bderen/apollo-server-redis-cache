@@ -23,7 +23,7 @@ const PORT = 3000;
 
 const app = express();
 
-const redisCache = new apolloServerRedisCache({ cache: true, key: 'asrc', ttl: 60 });
+const redisCache = new apolloServerRedisCache({ cache: true, key: 'asrc', ttl: 60, httpHeader: 'X-My-Cache' });
 
 app.use(
   '/graphql',

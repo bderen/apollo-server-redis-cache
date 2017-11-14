@@ -14,16 +14,23 @@ $ redis-server
 ```
 
 ```javascript
-import express from 'express';
-import bodyParser from 'body-parser';
-import graphqlExpressRedis from 'apollo-server-redis-cache';
+import express from 'express'
+import { graphqlExpress } from 'apollo-server-express'
+import apolloServerRedisCache from 'apollo-server-redis-cache'
 
-const schema = /* your schema */
+const _schema = /* your schema */
 const PORT = 3000;
 
 const app = express();
 
-app.use('/graphql', bodyParser.json(), graphqlExpressRedis({ schema: myGraphQLSchema }));
+const redisCache = new apolloServerRedisCache({ cache: true, key: 'asrc', ttl: 60 });
+
+app.use(
+  '/graphql',
+  bodyParser.json(),
+  redisCache.middleware(),
+  graphqlExpressRedis({ schema: _schema })
+);
 
 app.listen(PORT);
 ```

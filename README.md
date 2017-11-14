@@ -29,7 +29,7 @@ app.use(
   '/graphql',
   bodyParser.json(),
   redisCache.middleware(),
-  graphqlExpressRedis({ schema: _schema })
+  graphqlExpress({ schema: _schema })
 );
 
 app.listen(PORT);

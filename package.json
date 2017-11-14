@@ -1,6 +1,6 @@
 {
   "name": "apollo-server-redis-cache",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Apollo GraphQL server redis cache middleware",
   "main": "index.js",
   "author": {

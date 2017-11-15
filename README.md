@@ -28,6 +28,10 @@ const redisCache = new apolloServerRedisCache({ cache: true, key: 'asrc', ttl: 6
 app.use(
   '/graphql',
   bodyParser.json(),
+  (req, res, next) => {
+    res.use_redis_cache = req.cookies[USER_TOKEN] ? false : true;
+    next();
+  },
   redisCache.middleware(),
   graphqlExpress({ schema: _schema })
 );

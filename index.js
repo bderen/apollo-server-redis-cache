@@ -14,6 +14,10 @@ export default class {
         return next()
       }
       
+      if (!res.use_redis_cache) {
+        return next()
+      }
+
       const options = arguments;
 
       let binary = false;

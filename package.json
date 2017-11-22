@@ -1,10 +1,10 @@
 {
   "name": "apollo-server-redis-cache",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Apollo GraphQL server redis cache middleware",
-  "main": "lib/library.min.js",
+  "main": "lib/library.js",
   "scripts": {
-    "build": "webpack --env build"
+    "build": "webpack -p --env build"
   },
   "author": {
     "name": "B. Deren",

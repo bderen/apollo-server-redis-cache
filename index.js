@@ -27,12 +27,16 @@ export default class {
 
       const _write = res.write.bind(res);
 
-      const requestGetQuery = req.query.query && req.query.query ? ':' + _hashSum(req.query.query) : ''
-
-      const queryOperationName = req.body && req.body.operationName ? ':' + req.body.operationName : 'batch'
-      const queryHash = req.body && req.body ? requestGetQuery + ':' + _hashSum(req.body) : ''
-      const packageVersion = ':' + _package.version
-      const cacheKey = this.options.key + packageVersion + queryOperationName + queryHash
+      const requestGetQuery = req.query.query && req.query.query ? _hashSum(req.query.query) : 'Q'
+      let queryOperationName;
+      if (Array.isArray(req.body)) {
+        const names = req.body.filter(q => q.operationName).map(q => q.operationName)
+        queryOperationName = names && names.length ? names.join(',') : 'O'
+      } else {
+        queryOperationName = req.body.operationName ? req.body.operationName : 'O'
+      }
+      const queryHash = req.body && req.body ? _hashSum(req.body) : ''
+      const cacheKey = this.options.key + ':' + _package.version + ':' + queryOperationName + ':' + requestGetQuery + ':' + queryHash
 
       this.client.get(cacheKey, (err, result) => {
         if ( result && result.length ) {

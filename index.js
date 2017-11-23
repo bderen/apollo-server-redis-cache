@@ -50,7 +50,8 @@ export default class {
             }
             res.set('Content-Type', 'application/json');
             res.send(result.body);
-            return res.end();
+            res.end();
+            return
           }
         } else {
           this.updateCache(cacheKey, null, res, next)
@@ -69,7 +70,8 @@ export default class {
     res.write = (body) => {
       if ( typeof body !== 'string' ) {
         _write(body);
-        return res.end();
+        res.end();
+        return;
       }
 
       let errors = null;
@@ -83,7 +85,8 @@ export default class {
 
       if (errors && result && result.body && result.body.length ) {
         _write(result.body);
-        return res.end();
+        res.end();
+        return;
       }
 
       const entry = {
@@ -97,7 +100,8 @@ export default class {
       });
 
       _write(body);
-      return res.end();
+      res.end();
+      return;
     }
 
     return next()

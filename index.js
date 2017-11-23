@@ -3,7 +3,7 @@ import _hashSum from 'hash-sum'
 import * as _package from './package.json'
 
 export default class {
-  constructor(options = { cache: true, key: 'asrc', ttl: 60 }) {
+  constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 }) {
     this.options = options
     this.client = new _Cache({ enableOfflineQueue: false })
   }
@@ -18,15 +18,6 @@ export default class {
         return next()
       }
 
-      const options = arguments;
-
-      let binary = false;
-      if ( typeof options[0] === 'object' && typeof options[0].binary === 'boolean' ) {
-        binary = options[0].binary;
-      }
-
-      const _write = res.write.bind(res);
-
       const requestGetQuery = req.query.query && req.query.query ? _hashSum(req.query.query) : 'Q'
       let queryOperationName;
       if (Array.isArray(req.body)) {
@@ -36,44 +27,79 @@ export default class {
         queryOperationName = req.body.operationName ? req.body.operationName : 'O'
       }
       const queryHash = req.body && req.body ? _hashSum(req.body) : ''
-      const cacheKey = this.options.key + ':' + _package.version + ':' + queryOperationName + ':' + requestGetQuery + ':' + queryHash
+      const cacheKey = this.options.key + ':' + _package.structureVersion + ':' + queryOperationName + ':' + requestGetQuery + ':' + queryHash
 
-      this.client.get(cacheKey, (err, result) => {
-        if ( result && result.length ) {
-          if (this.options.httpHeader) {
-            res.setHeader(`${this.options.httpHeader}`, 'HIT')
-          }
-          if(binary) { //Convert back to binary buffer
-            _write(new Buffer(result, 'base64'));
-            res.end();
+      this.client.hgetall(cacheKey, (err, result) => {
+        if ( result && result.body && result.body.length ) {
+          const now = +new Date()
+          const created = result.created
+          const stale = result.stale * 1000
+          const expired = ( now - created ) > stale
+          
+          if ( expired ) {
+            const entry = {
+              body: result.body,
+              stale: result.stale,
+              created: +new Date(),
+            }
+            this.client.hmset(cacheKey, entry)
+            this.updateCache(cacheKey, result, res, next)
           } else {
-            _write(result);
-            res.end();
+            if (this.options.httpHeader) {
+              res.setHeader(`${this.options.httpHeader}`, 'HIT')
+            }
+            res.set('Content-Type', 'application/json');
+            res.send(result.body);
+            return res.end();
           }
         } else {
-          if (this.options.httpHeader) {
-            res.setHeader(`${this.options.httpHeader}`, 'MISS')
-          }
-          return next()
+          this.updateCache(cacheKey, null, res, next)
         }
       });
-      
-      res.write = (body) => {
-        /** convert binary to base64 string **/
-        if(binary && typeof body !== 'string'){
-          body = new Buffer(body).toString('base64');
-        }
-        
-        if ( typeof body !== 'string' ) {
-          _write(body);
-          res.end();
-        }
-
-        this.client.set(cacheKey, body, 'EX', this.options.ttl);
-
-        _write(body);
-        res.end();
-      }
     }
+  }
+
+  updateCache(cacheKey, result, res, next) {
+    if (this.options.httpHeader) {
+      res.setHeader(`${this.options.httpHeader}`, 'MISS')
+    }
+
+    const _write = res.write.bind(res);
+
+    res.write = (body) => {
+      if ( typeof body !== 'string' ) {
+        _write(body);
+        return res.end();
+      }
+
+      let errors = null;
+
+      try {
+        const bodyJson = JSON.parse(body)
+        errors = bodyJson && bodyJson.errors ? bodyJson.errors : null
+      } catch (e) {
+        console.error(e)
+      }
+
+      if (errors && result && result.body && result.body.length ) {
+        _write(result.body);
+        return res.end();
+      }
+
+      const entry = {
+        body: body,
+        stale: this.options.stale,
+        created: +new Date(),
+      }
+
+      this.client.hmset(cacheKey, entry, () => {
+        this.client.expire(cacheKey, this.options.ttl);
+      });
+
+      _write(body);
+      return res.end();
+    }
+
+    return next()
   }
 }

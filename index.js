@@ -29,6 +29,8 @@ export default class {
       const queryHash = req.body && req.body ? _hashSum(req.body) : ''
       const cacheKey = this.options.key + ':' + _package.structureVersion + ':' + queryOperationName + ':' + requestGetQuery + ':' + queryHash
 
+      const _write = res.write.bind(res);
+
       this.client.hgetall(cacheKey, (err, result) => {
         if ( result && result.body && result.body.length ) {
           const now = +new Date()
@@ -43,67 +45,45 @@ export default class {
               created: +new Date(),
             }
             this.client.hmset(cacheKey, entry)
-            this.updateCache(cacheKey, result, res, next)
+            if (this.options.httpHeader) {
+              res.setHeader(`${this.options.httpHeader}`, 'MISS')
+            }
+            return next()
           } else {
             if (this.options.httpHeader) {
               res.setHeader(`${this.options.httpHeader}`, 'HIT')
             }
-            res.set('Content-Type', 'application/json');
-            res.send(result.body);
+            res.setHeader('Content-Type', 'application/json');
+            _write(result.body);
             res.end();
-            return
           }
         } else {
-          this.updateCache(cacheKey, null, res, next)
+          if (this.options.httpHeader) {
+            res.setHeader(`${this.options.httpHeader}`, 'MISS')
+          }
+          return next()
         }
       });
-    }
-  }
 
-  updateCache(cacheKey, result, res, next) {
-    if (this.options.httpHeader) {
-      res.setHeader(`${this.options.httpHeader}`, 'MISS')
-    }
+      res.write = (body) => {
+        if ( typeof body !== 'string' ) {
+          _write(body);
+          res.end();
+        }
 
-    const _write = res.write.bind(res);
-
-    res.write = (body) => {
-      if ( typeof body !== 'string' ) {
+        const entry = {
+          body: body,
+          stale: this.options.stale,
+          created: +new Date(),
+        }
+  
+        this.client.hmset(cacheKey, entry, () => {
+          this.client.expire(cacheKey, this.options.ttl);
+        });
+  
         _write(body);
         res.end();
-        return;
       }
-
-      let errors = null;
-
-      try {
-        const bodyJson = JSON.parse(body)
-        errors = bodyJson && bodyJson.errors ? bodyJson.errors : null
-      } catch (e) {
-        console.error(e)
-      }
-
-      if (errors && result && result.body && result.body.length ) {
-        _write(result.body);
-        res.end();
-        return;
-      }
-
-      const entry = {
-        body: body,
-        stale: this.options.stale,
-        created: +new Date(),
-      }
-
-      this.client.hmset(cacheKey, entry, () => {
-        this.client.expire(cacheKey, this.options.ttl);
-      });
-
-      _write(body);
-      res.end();
-      return;
     }
-
-    return next()
   }
 }

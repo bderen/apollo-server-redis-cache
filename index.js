@@ -49,6 +49,8 @@ export default class {
         queryHash,
       }).cacheKey
 
+      queryOperationName = null;
+
       const _write = res.write.bind(res);
 
       this.client.hgetall(cacheKey, (err, result) => {

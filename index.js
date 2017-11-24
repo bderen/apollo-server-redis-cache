@@ -59,7 +59,7 @@ export default class {
           const expired = ( now - created ) > stale
           
           if ( expired ) {
-            const entry = {
+            let entry = {
               body: result.body,
               stale: result.stale,
               created: +new Date(),
@@ -68,6 +68,7 @@ export default class {
             if (this.options.httpHeader) {
               res.setHeader(`${this.options.httpHeader}`, 'MISS')
             }
+            entry = null;
             return next()
           } else {
             if (this.options.httpHeader) {
@@ -91,16 +92,15 @@ export default class {
           res.end();
         }
 
-        const entry = {
+        let entry = {
           body: body,
           stale: this.options.stale,
           created: +new Date(),
         }
   
-        this.client.hmset(cacheKey, entry, () => {
-          this.client.expire(cacheKey, this.options.ttl);
-        });
-  
+        this.client.hmset(cacheKey, entry);
+        this.client.expire(cacheKey, this.options.ttl);
+        entry = null;
         _write(body);
         res.end();
       }

@@ -60,14 +60,19 @@ export default class {
 
       const _write = res.write.bind(res);
 
-      this.client.hgetall(cacheKey, (err, result) => {
-        if ( result && result.body && result.body.length ) {
+      this.client.get(cacheKey, (err, result) => {
+        if ( result && result.length ) {
           if (this.options.httpHeader) {
             res.setHeader(`${this.options.httpHeader}`, 'HIT')
           }
-          res.setHeader('Content-Type', 'application/json');
-          _write(result.body);
-          res.end();
+          if(binary) { //Convert back to binary buffer
+            _write(new Buffer(result, 'base64'));
+            res.end();
+          } else {
+            res.setHeader('Content-Type', 'application/json');
+            _write(result);
+            res.end();
+          }
         } else {
           if (this.options.httpHeader) {
             res.setHeader(`${this.options.httpHeader}`, 'MISS')
@@ -75,27 +80,20 @@ export default class {
           return next()
         }
       });
-
+      
       res.write = (body) => {
+        /** convert binary to base64 string **/
         if(binary && typeof body !== 'string'){
           body = new Buffer(body).toString('base64');
         }
-
+        
         if ( typeof body !== 'string' ) {
           _write(body);
           res.end();
         }
 
-        let entry = {
-          body: body,
-          stale: this.options.stale,
-          created: +new Date(),
-        }
-  
-        this.client.hmset(cacheKey, entry);
-        this.client.expire(cacheKey, this.options.ttl);
-        entry = null;
-        
+        this.client.set(cacheKey, body, 'EX', this.options.ttl);
+
         _write(body);
         res.end();
       }

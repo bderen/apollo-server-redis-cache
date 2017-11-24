@@ -32,13 +32,6 @@ export default class {
         return next()
       }
 
-      const options = arguments;
-      
-      let binary = false;
-      if ( typeof options[0] === 'object' && typeof options[0].binary === 'boolean' ) {
-        binary = options[0].binary;
-      }
-
       const requestGetQuery = req.query.query && req.query.query ? _hashSum(req.query.query) : null
       let queryOperationName;
       if (Array.isArray(req.body)) {
@@ -56,21 +49,33 @@ export default class {
         queryHash,
       }).cacheKey
 
-      queryOperationName = null;
-
       const _write = res.write.bind(res);
 
-      this.client.get(cacheKey, (err, result) => {
-        if ( result && result.length ) {
-          if (this.options.httpHeader) {
-            res.setHeader(`${this.options.httpHeader}`, 'HIT')
-          }
-          if(binary) { //Convert back to binary buffer
-            _write(new Buffer(result, 'base64'));
-            res.end();
+      this.client.hgetall(cacheKey, (err, result) => {
+        if ( result && result.body && result.body.length ) {
+          const now = +new Date()
+          const created = result.created
+          const stale = result.stale * 1000
+          const expired = ( now - created ) > stale
+          
+          if ( expired ) {
+            const entry = {
+              body: result.body,
+              stale: result.stale,
+              created: +new Date(),
+            }
+            this.client.hmset(cacheKey, entry)
+            if (this.options.httpHeader) {
+              res.setHeader(`${this.options.httpHeader}`, 'MISS')
+            }
+            
+            return next()
           } else {
+            if (this.options.httpHeader) {
+              res.setHeader(`${this.options.httpHeader}`, 'HIT')
+            }
             res.setHeader('Content-Type', 'application/json');
-            _write(result);
+            _write(result.body);
             res.end();
           }
         } else {
@@ -80,19 +85,21 @@ export default class {
           return next()
         }
       });
-      
+
       res.write = (body) => {
-        /** convert binary to base64 string **/
-        if(binary && typeof body !== 'string'){
-          body = new Buffer(body).toString('base64');
-        }
-        
         if ( typeof body !== 'string' ) {
           _write(body);
           res.end();
         }
 
-        this.client.set(cacheKey, body, 'EX', this.options.ttl);
+        const entry = {
+          body: body,
+          stale: this.options.stale,
+          created: +new Date(),
+        }
+  
+        this.client.hmset(cacheKey, entry);
+        this.client.expire(cacheKey, this.options.ttl);
 
         _write(body);
         res.end();

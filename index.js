@@ -2,20 +2,6 @@ import _Cache from 'ioredis'
 import _hashSum from 'hash-sum'
 import * as _package from './package.json'
 
-class CacheKey {
-  constructor(obj) {
-    this.obj = obj ? obj : {}
-  }
-  get cacheKey() {
-    const key = this.obj.key + ':' + 
-           _package.structureVersion + ':' + 
-           (this.obj.queryOperationName ? this.obj.queryOperationName + ':' : '') + 
-           (this.obj.requestGetQuery ? this.obj.requestGetQuery + ':' : '') + 
-           this.obj.queryHash
-    return key
-  }
-}
-
 export default class {
   constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 }) {
     this.options = options
@@ -32,24 +18,10 @@ export default class {
         return next()
       }
 
-      const requestGetQuery = req.query.query && req.query.query ? _hashSum(req.query.query) : null
-      let queryOperationName;
-      if (Array.isArray(req.body)) {
-        const names = req.body.filter(q => q.operationName).map(q => q.operationName)
-        queryOperationName = names && names.length ? names.join(',') : null
-      } else {
-        queryOperationName = req.body.operationName ? req.body.operationName : null
-      }
-      const queryHash = req.body && req.body ? _hashSum(req.body) : ''
-
-      const cacheKey = new CacheKey({
-        key: this.options.key,
-        requestGetQuery,
-        queryOperationName,
-        queryHash,
-      }).cacheKey
-
-      queryOperationName = null;
+      const queryOperationName = req.body && req.body.operationName ? ':' + req.body.operationName : ''
+      const queryHash = req.body && req.body ? ':' + _hashSum(req.body) : ''
+      const structureVersion = ':' + _package.structureVersion
+      const cacheKey = this.options.key + structureVersion + queryOperationName + queryHash
 
       const _write = res.write.bind(res);
 

@@ -19,7 +19,7 @@ class CacheKey {
 export default class {
   constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 }) {
     this.options = options
-    this.client = new _Cache({ enableOfflineQueue: false })
+    this.client = options.cache ? new _Cache({ enableOfflineQueue: false }) : null
   }
 
   middleware() {

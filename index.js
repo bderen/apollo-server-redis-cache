@@ -10,7 +10,6 @@ class CacheKey {
     const key = this.obj.key + ':' + 
            _package.structureVersion + ':' + 
            (this.obj.queryOperationName ? this.obj.queryOperationName + ':' : '') + 
-           (this.obj.requestGetQuery ? this.obj.requestGetQuery + ':' : '') + 
            this.obj.queryHash
     return key
   }
@@ -32,7 +31,6 @@ module.exports = class ApolloServerRedisCache {
         return next()
       }
 
-      const requestGetQuery = req.query.query && req.query.query ? _hashSum(req.query.query) : null
       let queryOperationName;
       let queryHash;
 
@@ -80,7 +78,6 @@ module.exports = class ApolloServerRedisCache {
 
       const cacheKey = new CacheKey({
         key: this.options.key,
-        requestGetQuery,
         queryOperationName,
         queryHash,
       }).cacheKey

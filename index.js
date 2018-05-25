@@ -1,6 +1,6 @@
-import _Cache from 'ioredis'
-import _hashSum from 'hash-sum'
-import * as _package from './package.json'
+const _Cache = require('ioredis')
+const _hashSum = require('hash-sum')
+const _package = require('./package.json')
 
 class CacheKey {
   constructor(obj) {
@@ -16,7 +16,7 @@ class CacheKey {
   }
 }
 
-export default class {
+module.exports = class ApolloServerRedisCache {
   constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 }) {
     this.options = options
     this.client = options.cache ? new _Cache({ enableOfflineQueue: false }) : null
@@ -34,13 +34,49 @@ export default class {
 
       const requestGetQuery = req.query.query && req.query.query ? _hashSum(req.query.query) : null
       let queryOperationName;
+      let queryHash;
+
       if (Array.isArray(req.body)) {
+        /**
+         * POST batch query
+         */
         const names = req.body.filter(q => q.operationName).map(q => q.operationName)
         queryOperationName = names && names.length ? names.join(',') : null
+        queryHash = req.body && req.body ? _hashSum(req.body) : null
+      } else if (req.body.operationName) {
+        /**
+         * POST single query
+         */
+        queryOperationName = req.body.operationName
+        queryHash = req.body && req.body ? _hashSum(req.body) : null
+      } else if (req.query && req.query.operationName) {
+        /**
+         * GET query
+         */
+        queryOperationName = req.query.operationName
+        if (req.query.query && req.query.variables) {
+          queryHash = _hashSum(req.query.query + req.query.variables)
+        } else if (req.query.query && !req.query.variables) {
+          queryHash = _hashSum(req.query.query)
+        } else if (!req.query.query && req.query.variables) {
+          queryHash = _hashSum(queryOperationName + req.query.variables)
+        } else {
+          queryHash = _hashSum(queryOperationName)
+        }
       } else {
-        queryOperationName = req.body.operationName ? req.body.operationName : null
+        /**
+         * Unknown query, I give up
+         */
+        queryOperationName = null
+        queryHash = null
       }
-      const queryHash = req.body && req.body ? _hashSum(req.body) : ''
+
+      if (!queryOperationName || !queryHash) {
+        /**
+         * Just skip if we don't know which query or operationName
+         */
+        return next()
+      }
 
       const cacheKey = new CacheKey({
         key: this.options.key,

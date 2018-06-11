@@ -33,21 +33,20 @@ module.exports = class ApolloServerRedisCache {
 
       let queryOperationName;
       let queryHash;
-
-      if (Array.isArray(req.body)) {
+      if (req.method === 'POST' && Array.isArray(req.body)) {
         /**
          * POST batch query
          */
         const names = req.body.filter(q => q.operationName).map(q => q.operationName)
         queryOperationName = names && names.length ? names.join(',') : null
         queryHash = _hashSum(queryOperationName + req.body)
-      } else if (req.body && req.body.operationName) {
+      } else if (req.method === 'POST' && req.body && req.body.operationName) {
         /**
          * POST single query
          */
         queryOperationName = req.body.operationName
         queryHash = _hashSum(queryOperationName + req.body)
-      } else if (req.body && !req.body.operationName) {
+      } else if (req.method === 'POST' && req.body && !req.body.operationName) {
         /**
          * POST query without operationName (it is possible and we need to cache them)
          */
@@ -122,6 +121,7 @@ module.exports = class ApolloServerRedisCache {
             res.setHeader('Content-Type', 'application/json');
             _write(result.body);
             res.end();
+            return
           }
         } else {
           if (this.options.httpHeader) {
@@ -135,6 +135,13 @@ module.exports = class ApolloServerRedisCache {
         if ( typeof body !== 'string' ) {
           _write(body);
           res.end();
+          return
+        }
+
+        if (body.includes('errors')) {
+          _write(body);
+          res.end();
+          return
         }
 
         const entry = {
@@ -148,6 +155,7 @@ module.exports = class ApolloServerRedisCache {
 
         _write(body);
         res.end();
+        return
       }
     }
   }

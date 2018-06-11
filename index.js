@@ -39,39 +39,32 @@ module.exports = class ApolloServerRedisCache {
          */
         const names = req.body.filter(q => q.operationName).map(q => q.operationName)
         queryOperationName = names && names.length ? names.join(',') : null
-        queryHash = _hashSum(queryOperationName + req.body)
+        queryHash = _hashSum(queryOperationName + JSON.stringify(req.body))
       } else if (req.method === 'POST' && req.body && req.body.operationName) {
         /**
          * POST single query
          */
+        
         queryOperationName = req.body.operationName
-        queryHash = _hashSum(queryOperationName + req.body)
+        queryHash = _hashSum(queryOperationName + JSON.stringify(req.body))
       } else if (req.method === 'POST' && req.body && !req.body.operationName) {
         /**
          * POST query without operationName (it is possible and we need to cache them)
          */
         queryOperationName = 'unknown'
-        queryHash = _hashSum(queryOperationName + req.body)
+        queryHash = _hashSum(queryOperationName + JSON.stringify(req.body))
       } else if (req.query && req.query.operationName) {
         /**
          * GET query
          */
         queryOperationName = req.query.operationName
-        if (req.query.query && req.query.variables) {
-          queryHash = _hashSum(queryOperationName + req.query.query + req.query.variables)
-        } else if (req.query.query && !req.query.variables) {
-          queryHash = _hashSum(queryOperationName + req.query.query)
-        } else if (!req.query.query && req.query.variables) {
-          queryHash = _hashSum(queryOperationName + req.query.variables)
-        } else {
-          queryHash = _hashSum(queryOperationName)
-        }
+        queryHash = _hashSum(queryOperationName + JSON.stringify(req.query))
       } else if (req.query.query && !req.query.operationName) {
         /**
          * GET query without operationName (it is possible and we need to cache them)
          */
         queryOperationName = 'unknown'
-        queryHash = _hashSum(queryOperationName + req.query.query)
+        queryHash = _hashSum(queryOperationName + JSON.stringify(req.query))
       } else {
         /**
          * Unknown query, I give up

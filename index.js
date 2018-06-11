@@ -40,27 +40,39 @@ module.exports = class ApolloServerRedisCache {
          */
         const names = req.body.filter(q => q.operationName).map(q => q.operationName)
         queryOperationName = names && names.length ? names.join(',') : null
-        queryHash = req.body && req.body ? _hashSum(req.body) : null
-      } else if (req.body.operationName) {
+        queryHash = _hashSum(queryOperationName + req.body)
+      } else if (req.body && req.body.operationName) {
         /**
          * POST single query
          */
         queryOperationName = req.body.operationName
-        queryHash = req.body && req.body ? _hashSum(req.body) : null
+        queryHash = _hashSum(queryOperationName + req.body)
+      } else if (req.body && !req.body.operationName) {
+        /**
+         * POST query without operationName (it is possible and we need to cache them)
+         */
+        queryOperationName = ''
+        queryHash = _hashSum(queryOperationName + req.body)
       } else if (req.query && req.query.operationName) {
         /**
          * GET query
          */
         queryOperationName = req.query.operationName
         if (req.query.query && req.query.variables) {
-          queryHash = _hashSum(req.query.query + req.query.variables)
+          queryHash = _hashSum(queryOperationName + req.query.query + req.query.variables)
         } else if (req.query.query && !req.query.variables) {
-          queryHash = _hashSum(req.query.query)
+          queryHash = _hashSum(queryOperationName + req.query.query)
         } else if (!req.query.query && req.query.variables) {
           queryHash = _hashSum(queryOperationName + req.query.variables)
         } else {
           queryHash = _hashSum(queryOperationName)
         }
+      } else if (req.query.query && !req.query.operationName) {
+        /**
+         * GET query without operationName (it is possible and we need to cache them)
+         */
+        queryOperationName = ''
+        queryHash = _hashSum(queryOperationName + req.query.query)
       } else {
         /**
          * Unknown query, I give up

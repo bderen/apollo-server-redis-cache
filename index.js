@@ -51,7 +51,7 @@ module.exports = class ApolloServerRedisCache {
         /**
          * POST query without operationName (it is possible and we need to cache them)
          */
-        queryOperationName = ''
+        queryOperationName = 'unknown'
         queryHash = _hashSum(queryOperationName + req.body)
       } else if (req.query && req.query.operationName) {
         /**
@@ -71,7 +71,7 @@ module.exports = class ApolloServerRedisCache {
         /**
          * GET query without operationName (it is possible and we need to cache them)
          */
-        queryOperationName = ''
+        queryOperationName = 'unknown'
         queryHash = _hashSum(queryOperationName + req.query.query)
       } else {
         /**

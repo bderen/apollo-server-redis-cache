@@ -101,7 +101,7 @@ module.exports = class ApolloServerRedisCache {
 
       const _write = res.write.bind(res);
 
-      if (hasCacheControlHeaders(res.headers, 'refresh')) {
+      if (hasCacheControlHeaders(req.headers, 'refresh')) {
         if (this.debug) this.debug('refresh %y',cacheKey)
         this.client.del(cacheKey)
       }
@@ -163,7 +163,7 @@ module.exports = class ApolloServerRedisCache {
           created: +new Date(),
         }
 
-        if (!hasCacheControlHeaders(res.headers, 'no-cache')) {
+        if (!hasCacheControlHeaders(req.headers, 'no-cache')) {
           if (this.debug) this.debug('store %y',cacheKey)
           this.client.hmset(cacheKey, entry);
           this.client.expire(cacheKey, this.options.ttl);

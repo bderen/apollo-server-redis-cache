@@ -25,7 +25,7 @@ function hasCacheControlHeaders(headers, attrib) {
     }
   }
   return result;
-},
+}
 
 module.exports = class ApolloServerRedisCache {
   constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 , prefix: 'apollo:cache'}) {

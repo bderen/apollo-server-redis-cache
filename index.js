@@ -31,7 +31,7 @@ module.exports = class ApolloServerRedisCache {
   constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 , prefix: 'apollo:cache'}) {
     this.options = options
     this.client = options.cache ? new _Cache({ enableOfflineQueue: false }) : null
-    if (options.prefix) this.debug = require('yves').debugger(prefix);
+    if (options.prefix) this.debug = require('yves').debugger(options.prefix);
   }
 
   middleware() {

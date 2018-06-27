@@ -1,6 +1,7 @@
 const _Cache = require('ioredis')
 const _hashSum = require('hash-sum')
 const _package = require('./package.json')
+const parseCacheControl = require('parse-cache-control')
 
 class CacheKey {
   constructor(obj) {
@@ -14,6 +15,17 @@ class CacheKey {
     return key
   }
 }
+
+function hasCacheControlHeaders(headers, attrib) {
+  let result = false;
+  if (headers && headers['cache-control']) {
+    let cacheControl = parseCacheControl(headers['cache-control'])
+    if (cacheControl && cacheControl[attrib]) {
+      result = true;
+    }
+  }
+  return result;
+},
 
 module.exports = class ApolloServerRedisCache {
   constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 }) {
@@ -88,6 +100,10 @@ module.exports = class ApolloServerRedisCache {
 
       const _write = res.write.bind(res);
 
+      if (hasCacheControlHeaders(res.headers, 'refresh')) {
+        this.client.del(cacheKey)
+      }
+
       this.client.hgetall(cacheKey, (err, result) => {
         if ( result && result.body && result.body.length ) {
           const now = +new Date()
@@ -142,9 +158,11 @@ module.exports = class ApolloServerRedisCache {
           stale: this.options.stale,
           created: +new Date(),
         }
-  
-        this.client.hmset(cacheKey, entry);
-        this.client.expire(cacheKey, this.options.ttl);
+
+        if (!hasCacheControlHeaders(res.headers, 'no-cache')) {
+          this.client.hmset(cacheKey, entry);
+          this.client.expire(cacheKey, this.options.ttl);
+        }
 
         _write(body);
         res.end();

@@ -8,9 +8,9 @@ class CacheKey {
     this.obj = obj ? obj : {}
   }
   get cacheKey() {
-    const key = this.obj.key + ':' + 
-           _package.structureVersion + ':' + 
-           (this.obj.queryOperationName ? this.obj.queryOperationName + ':' : '') + 
+    const key = this.obj.key + ':' +
+           _package.structureVersion + ':' +
+           (this.obj.queryOperationName ? this.obj.queryOperationName + ':' : '') +
            this.obj.queryHash
     return key
   }
@@ -28,9 +28,10 @@ function hasCacheControlHeaders(headers, attrib) {
 },
 
 module.exports = class ApolloServerRedisCache {
-  constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 }) {
+  constructor(options = { cache: true, key: 'asrc', ttl: 900, stale: 60 , prefix: 'apollo:cache'}) {
     this.options = options
     this.client = options.cache ? new _Cache({ enableOfflineQueue: false }) : null
+    if (prefix) this.debug = yves.debugger(prefix);
   }
 
   middleware() {
@@ -38,7 +39,7 @@ module.exports = class ApolloServerRedisCache {
       if (!this.options.cache) {
         return next()
       }
-      
+
       if (!res.use_redis_cache) {
         return next()
       }
@@ -56,7 +57,7 @@ module.exports = class ApolloServerRedisCache {
         /**
          * POST single query
          */
-        
+
         queryOperationName = req.body.operationName
         queryHash = _hashSum(queryOperationName + JSON.stringify(req.body))
       } else if (req.method === 'POST' && req.body && !req.body.operationName) {
@@ -101,6 +102,7 @@ module.exports = class ApolloServerRedisCache {
       const _write = res.write.bind(res);
 
       if (hasCacheControlHeaders(res.headers, 'refresh')) {
+        if (this.debug) this.debug('refresh %y',cacheKey)
         this.client.del(cacheKey)
       }
 
@@ -110,7 +112,7 @@ module.exports = class ApolloServerRedisCache {
           const created = result.created
           const stale = result.stale * 1000
           const expired = ( now - created ) > stale
-          
+
           if ( expired ) {
             const entry = {
               body: result.body,
@@ -121,7 +123,7 @@ module.exports = class ApolloServerRedisCache {
             if (this.options.httpHeader) {
               res.setHeader(`${this.options.httpHeader}`, 'MISS')
             }
-            
+            if (this.debug) this.debug('miss %y',cacheKey)
             return next()
           } else {
             if (this.options.httpHeader) {
@@ -130,12 +132,14 @@ module.exports = class ApolloServerRedisCache {
             res.setHeader('Content-Type', 'application/json');
             _write(result.body);
             res.end();
+            if (this.debug) this.debug('hit %y',cacheKey)
             return
           }
         } else {
           if (this.options.httpHeader) {
             res.setHeader(`${this.options.httpHeader}`, 'MISS')
           }
+          if (this.debug) this.debug('miss %y',cacheKey)
           return next()
         }
       });
@@ -160,6 +164,7 @@ module.exports = class ApolloServerRedisCache {
         }
 
         if (!hasCacheControlHeaders(res.headers, 'no-cache')) {
+          if (this.debug) this.debug('store %y',cacheKey)
           this.client.hmset(cacheKey, entry);
           this.client.expire(cacheKey, this.options.ttl);
         }
